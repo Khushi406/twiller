@@ -40,9 +40,24 @@ const userSchema = new mongoose.Schema({
     maxlength: [160, 'Bio cannot exceed 160 characters'],
     default: ''
   },
+  phone: {
+    type: String,
+    sparse: true, // Allows multiple null values
+    match: [/^\+?[\d\s-()]+$/, 'Please enter a valid phone number']
+  },
   verified: {
     type: Boolean,
     default: false
+  },
+  // Password reset fields
+  passwordResetOTP: {
+    type: String
+  },
+  passwordResetExpires: {
+    type: Date
+  },
+  lastPasswordResetRequest: {
+    type: Date
   },
   followers: [{
     type: mongoose.Schema.Types.ObjectId,
