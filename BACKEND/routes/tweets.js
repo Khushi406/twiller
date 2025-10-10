@@ -42,11 +42,15 @@ router.get('/', async (req, res) => {
 // Create new tweet
 router.post('/', auth, async (req, res) => {
   try {
-    const { content, image } = req.body;
+    const { content, image, audio } = req.body;
 
     const tweet = new Tweet({
       content,
       image,
+      audio: audio ? {
+        url: audio.url,
+        duration: audio.duration
+      } : undefined,
       author: req.userId
     });
 

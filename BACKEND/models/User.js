@@ -59,6 +59,16 @@ const userSchema = new mongoose.Schema({
   lastPasswordResetRequest: {
     type: Date
   },
+  // Audio upload verification fields
+  audioUploadOTP: {
+    type: String
+  },
+  audioUploadOTPExpires: {
+    type: Date
+  },
+  audioUploadVerified: {
+    type: Date
+  },
   followers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

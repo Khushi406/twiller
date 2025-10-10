@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { generateOTP, sendOTPEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
@@ -251,6 +252,117 @@ router.post('/reset-password', async (req, res) => {
     console.error('Reset password error:', error);
     res.status(500).json({ 
       message: 'Failed to reset password',
+      error: error.message 
+    });
+  }
+});
+
+// Send audio upload OTP
+router.post('/send-audio-otp', auth, async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Check if user is authenticated
+    if (!req.user) {
+      console.error('Audio OTP error: req.user is undefined');
+      return res.status(401).json({ 
+        message: 'User not authenticated' 
+      });
+    }
+
+    // Check if email is provided
+    if (!email) {
+      return res.status(400).json({ 
+        message: 'Email is required' 
+      });
+    }
+    
+    // Verify the email belongs to the authenticated user
+    if (email !== req.user.email) {
+      return res.status(403).json({ 
+        message: 'You can only verify your own email address' 
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = generateOTP();
+    
+    // Set OTP expiry (10 minutes)
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    
+    // Update user with audio OTP
+    await User.findByIdAndUpdate(req.user._id, {
+      audioUploadOTP: otp,
+      audioUploadOTPExpires: otpExpiry
+    });
+
+    // Send OTP email
+    const emailResult = await sendOTPEmail(email, otp, 'audio upload');
+    
+    if (emailResult.success) {
+      console.log(`Audio Upload OTP sent to ${email}: ${otp}`);
+      res.json({
+        message: 'OTP sent successfully to your email'
+      });
+    } else {
+      // Fallback - log OTP to console for demo purposes
+      console.log(`Email failed, Audio Upload OTP for ${email}: ${otp}`);
+      res.json({
+        message: 'OTP generated (check console for demo)',
+        demo_otp: otp // Remove this in production
+      });
+    }
+    
+  } catch (error) {
+    console.error('Send audio OTP error:', error);
+    res.status(500).json({ 
+      message: 'Failed to send OTP',
+      error: error.message 
+    });
+  }
+});
+
+// Verify audio upload OTP
+router.post('/verify-audio-otp', auth, async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    
+    // Verify the email belongs to the authenticated user
+    if (email !== req.user.email) {
+      return res.status(403).json({ 
+        message: 'You can only verify your own email address' 
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+    
+    if (!user.audioUploadOTP || user.audioUploadOTP !== otp) {
+      return res.status(400).json({ 
+        message: 'Invalid OTP' 
+      });
+    }
+    
+    if (user.audioUploadOTPExpires < new Date()) {
+      return res.status(400).json({ 
+        message: 'OTP has expired' 
+      });
+    }
+    
+    // Clear OTP and mark as verified for current session
+    await User.findByIdAndUpdate(req.user._id, {
+      audioUploadOTP: undefined,
+      audioUploadOTPExpires: undefined,
+      audioUploadVerified: new Date() // Valid for current session
+    });
+    
+    res.json({
+      message: 'Email verified successfully for audio upload'
+    });
+    
+  } catch (error) {
+    console.error('Verify audio OTP error:', error);
+    res.status(500).json({ 
+      message: 'Failed to verify OTP',
       error: error.message 
     });
   }

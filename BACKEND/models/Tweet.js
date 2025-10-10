@@ -16,6 +16,16 @@ const tweetSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  audio: {
+    url: {
+      type: String,
+      default: null
+    },
+    duration: {
+      type: Number,
+      default: null
+    }
+  },
   likes: [{
     user: {
       type: mongoose.Schema.Types.ObjectId,
