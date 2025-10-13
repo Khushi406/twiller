@@ -77,6 +77,21 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  // Notification settings
+  notificationSettings: {
+    enabled: {
+      type: Boolean,
+      default: true
+    },
+    keywords: {
+      type: [String],
+      default: ['cricket', 'science']
+    },
+    browserPermissionGranted: {
+      type: Boolean,
+      default: false
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

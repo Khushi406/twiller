@@ -368,4 +368,55 @@ router.post('/verify-audio-otp', auth, async (req, res) => {
   }
 });
 
+// Get notification settings
+router.get('/notification-settings', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('notificationSettings');
+    
+    res.json({
+      notificationSettings: user.notificationSettings || {
+        enabled: true,
+        keywords: ['cricket', 'science'],
+        browserPermissionGranted: false
+      }
+    });
+  } catch (error) {
+    console.error('Get notification settings error:', error);
+    res.status(500).json({ 
+      message: 'Failed to get notification settings',
+      error: error.message 
+    });
+  }
+});
+
+// Update notification settings
+router.put('/notification-settings', auth, async (req, res) => {
+  try {
+    const { notificationSettings } = req.body;
+    
+    if (!notificationSettings) {
+      return res.status(400).json({ 
+        message: 'Notification settings are required' 
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { notificationSettings },
+      { new: true, runValidators: true }
+    ).select('notificationSettings');
+
+    res.json({
+      message: 'Notification settings updated successfully',
+      notificationSettings: updatedUser.notificationSettings
+    });
+  } catch (error) {
+    console.error('Update notification settings error:', error);
+    res.status(500).json({ 
+      message: 'Failed to update notification settings',
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;
