@@ -1,9 +1,11 @@
 const express = require('express');
+const UAParser = require('ua-parser-js');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { generateOTP, sendOTPEmail } = require('../utils/emailService');
 
+console.log("Loaded auth.js");
 const router = express.Router();
 
 // Register new user
@@ -15,47 +17,25 @@ router.post('/register', async (req, res) => {
     const existingUser = await User.findOne({ 
       $or: [{ email }, { username }] 
     });
-
     if (existingUser) {
-      return res.status(400).json({ 
-        message: existingUser.email === email ? 'Email already registered' : 'Username already taken'
-      });
+      return res.status(400).json({ message: 'User with this email or username already exists' });
     }
 
     // Create new user
-    const user = new User({
-      name,
-      username,
-      email,
-      password
-    });
-
+    const user = new User({ name, username, email, password });
     await user.save();
 
     // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
-      message: 'User created successfully',
+      message: 'User registered successfully',
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar,
-        bio: user.bio,
-        verified: user.verified,
-        createdAt: user.createdAt
-      }
+      user
     });
 
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Register error:', error);
     res.status(500).json({ 
       message: 'Registration failed',
       error: error.message 
@@ -66,13 +46,26 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    console.log('🔐 Login attempt for email:', email);
+  const { email, password } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email });
+  // Parse user agent and IP
+  const userAgent = req.headers['user-agent'] || '';
+  const parser = new UAParser(userAgent);
+  const uaResult = parser.getResult();
+  const browser = uaResult.browser.name || 'Unknown';
+  const os = uaResult.os.name || 'Unknown';
+  const deviceType = uaResult.device.type || 'desktop';
+  // Get IP address
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress || req.ip || '';
+
+  // Find user by email
+  const user = await User.findOne({ email });
+  // For debugging, log detected info
+  console.log(`Login attempt: email=${email}, browser=${browser}, os=${os}, deviceType=${deviceType}, ip=${ip}`);
     if (!user) {
       console.log('❌ User not found with email:', email);
+      // Log failed attempt
+      // We don't have a user object to update, so we can't log this attempt against a user.
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
@@ -82,10 +75,108 @@ router.post('/login', async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       console.log('❌ Password mismatch for user:', email);
+      // Log failed attempt
+      user.loginHistory.push({ ip, browser, os, otpRequired: false, success: false });
+      await user.save();
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     console.log('✅ Password match successful for:', email);
+
+    // Time and OTP logic
+    let otpRequired = false;
+    let timeAllowed = true;
+    // Restrict all mobile devices (deviceType === 'mobile') to 10AM-1PM IST
+    if (deviceType === 'mobile' || os === 'Android' || os === 'iOS') {
+      // Only allow 10 AM - 1 PM IST
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const ist = new Date(now.getTime() + istOffset);
+      const hour = ist.getUTCHours(); // This is IST hour because of the offset
+      if (hour < 4 || hour > 7) { // 10-13 IST == 4-7 UTC
+        timeAllowed = false;
+      }
+    }
+    // Chrome: require OTP
+    if (browser === 'Chrome') {
+      otpRequired = true;
+      const otp = generateOTP();
+      user.loginOTP = otp;
+      user.loginOTPExpires = Date.now() + 10 * 60 * 1000; // 10 min expiry
+      await sendOTPEmail(user.email, otp, 'Chrome login');
+      // Log login attempt (pending OTP)
+      user.loginHistory.push({
+        date: new Date(),
+        ip,
+        browser,
+        os,
+        deviceType,
+        otpRequired: true,
+        success: false
+      });
+      await user.save();
+      // Respond with OTP required, do not issue token yet
+      return res.status(200).json({
+        message: 'OTP required for Chrome login. OTP sent to your email.',
+        otpRequired: true
+      });
+    }
+
+    // Edge: explicitly allow direct login (no OTP)
+    if (browser === 'Edge') {
+      otpRequired = false;
+      // Log login attempt
+      user.loginHistory.push({
+        date: new Date(),
+        ip,
+        browser,
+        os,
+        deviceType,
+        otpRequired: false,
+        success: timeAllowed
+      });
+      await user.save();
+      if (!timeAllowed) {
+        return res.status(403).json({ message: 'Mobile login allowed only between 10 AM and 1 PM IST' });
+      }
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      return res.json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          avatar: user.avatar,
+          bio: user.bio,
+          verified: user.verified,
+          createdAt: user.createdAt,
+          otpRequired: false
+        }
+      });
+    }
+
+    // Log login attempt
+    user.loginHistory.push({
+      date: new Date(),
+      ip,
+      browser,
+      os,
+      deviceType,
+      otpRequired,
+      success: timeAllowed
+    });
+    await user.save();
+
+    if (!timeAllowed) {
+      return res.status(403).json({ message: 'Mobile login allowed only between 10 AM and 1 PM IST' });
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -105,7 +196,8 @@ router.post('/login', async (req, res) => {
         avatar: user.avatar,
         bio: user.bio,
         verified: user.verified,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        otpRequired
       }
     });
 
@@ -114,6 +206,80 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ 
       message: 'Login failed',
       error: error.message 
+    });
+  }
+});
+
+// Verify Chrome login OTP (must be at top level, not inside /login)
+console.log("Registering /verify-login-otp");
+router.post('/verify-login-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    // Parse user agent and IP for logging
+    const userAgent = req.headers['user-agent'] || '';
+    const parser = new UAParser(userAgent);
+    const uaResult = parser.getResult();
+    const browser = uaResult.browser.name || 'Unknown';
+    const os = uaResult.os.name || 'Unknown';
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress || req.ip || '';
+
+    const user = await User.findOne({ email });
+    if (!user || !user.loginOTP || !user.loginOTPExpires) {
+      return res.status(400).json({ message: 'OTP verification failed' });
+    }
+    if (user.loginOTP !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+    if (user.loginOTPExpires < Date.now()) {
+      return res.status(400).json({ message: 'OTP expired' });
+    }
+    // OTP valid, clear fields
+    user.loginOTP = undefined;
+    user.loginOTPExpires = undefined;
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    // Find the pending Chrome login and update it to success: true
+    const pendingLogin = user.loginHistory.slice().reverse().find(
+      (h) => h.browser === 'Chrome' && h.otpRequired && !h.success
+    );
+    if (pendingLogin) {
+      pendingLogin.success = true;
+    } else {
+      // Or, push a new record if one isn't found
+      user.loginHistory.push({
+        date: new Date(),
+        ip,
+        browser,
+        os,
+        otpRequired: true,
+        success: true,
+      });
+    }
+    await user.save();
+    res.json({
+      message: 'OTP verified, login successful',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+        verified: user.verified,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Verify login OTP error:', error);
+    res.status(500).json({
+      message: 'OTP verification failed',
+      error: error.message
     });
   }
 });
@@ -128,6 +294,23 @@ router.get('/me', auth, async (req, res) => {
     res.status(500).json({ 
       message: 'Failed to get user',
       error: error.message 
+    });
+  }
+});
+
+// Get current user's login history
+router.get('/login-history', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('loginHistory');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ loginHistory: user.loginHistory });
+  } catch (error) {
+    console.error('Get login history error:', error);
+    res.status(500).json({
+      message: 'Failed to get login history',
+      error: error.message
     });
   }
 });

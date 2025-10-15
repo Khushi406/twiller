@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+  // OTP for Chrome login
+  loginOTP: {
+    type: String
+  },
+  loginOTPExpires: {
+    type: Date
+  },
   name: {
     type: String,
     required: [true, 'Name is required'],
@@ -96,6 +103,18 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+  ,
+  // Login tracking
+  loginHistory: [
+    {
+      date: { type: Date, default: Date.now },
+      ip: String,
+      browser: String,
+      os: String,
+      otpRequired: Boolean,
+      success: Boolean
+    }
+  ]
 }, {
   timestamps: true
 });

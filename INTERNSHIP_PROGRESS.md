@@ -11,7 +11,63 @@
 
 ---
 
-## 📊 **Current Progress: 2/6 Tasks Complete (33%)**
+## 📊 **Current Progress: 3/6 Tasks Complete (50%)**
+
+
+## 🗓️ **Daily Progress Log**
+
+### **October 13, 2025**
+**Task #6: Notification System — COMPLETED & PUSHED**
+- Integrated browser Notification API for tweet alerts
+- Implemented keyword detection for "cricket" and "science" in tweets
+- Added profile page toggle for enabling/disabling notifications
+- Fixed API endpoint path issues and debugged notification logic
+- Verified notification triggers and UI integration
+- All changes committed and pushed to GitHub ([commit 8dd9121](https://github.com/Khushi406/twiller/commit/8dd9121))
+- Updated documentation and progress report
+
+---
+
+### **Daily Report: October 13, 2025**
+
+**Summary:**
+- Completed and pushed the Notification System (Task #6) with browser notifications, keyword detection, and profile toggle.
+- Debugged and fixed API endpoint issues, ensuring notifications trigger as expected.
+- Updated INTERNSHIP_PROGRESS.md with today's achievements.
+- Prepared for the next task: Login Tracking (Task #5). Planning and requirements review started; implementation will continue tomorrow.
+
+**Status:**
+- 3/6 tasks complete or in progress.
+- All code changes are committed and pushed to GitHub.
+
+**Next Steps:**
+- Begin backend and frontend implementation for Login Tracking feature.
+
+---
+
+#### **Task #6: Notification System** ✅
+**Status**: ✅ **COMPLETED & PUSHED**
+**Completion Date**: October 13, 2025
+
+**Requirements Met**:
+- ✅ Browser Notification API integration
+- ✅ Keyword detection for "cricket" and "science"
+- ✅ Profile page toggle for enabling/disabling notifications
+- ✅ Full tweet content displayed in notifications
+
+**Technical Implementation**:
+- **Frontend**: React components for notification permissions and profile settings toggle.
+- **Backend**: Logic integrated into the tweet creation service to check for keywords.
+- **API**: Utilized the browser's native `Notification` API.
+- **State Management**: Handled notification preference in user state.
+
+**Key Features**:
+- Real-time alerts for new tweets containing specific keywords.
+- User-controlled preference to opt-in or opt-out of notifications.
+- Seamless integration with the existing UI on the profile page.
+- Debugged and fixed API endpoint pathing issues for reliable delivery.
+
+---
 
 ### ✅ **COMPLETED TASKS**
 
@@ -98,14 +154,6 @@
 - Chrome browser: OTP required
 - Microsoft Edge: Direct access
 - Mobile access: 10 AM - 1 PM only
-
-### **Task #6: Notification System**
-**Difficulty**: 🟢 Easy  
-**Requirements**:
-- Browser Notification API integration
-- Keyword detection: "cricket" and "science"
-- Profile page toggle for enable/disable
-- Full tweet display in notifications
 
 ---
 
@@ -321,8 +369,8 @@ if (emailResult.success) {
 
 ---
 
-*Last Updated: October 10, 2025*  
-*Next Update: After completing Task #6 (Notification System)*
+*Last Updated: October 13, 2025*  
+*Next Update: After completing Task #5 (Login Tracking)*
 
 ---
 
