@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const { generateOTP, sendOTPEmail } = require('../utils/emailService');
+const { generateOTP: generateSMSOTP, sendOTPSMS } = require('../utils/smsService');
 
 console.log("Loaded auth.js");
 const router = express.Router();
@@ -576,10 +577,10 @@ router.get('/notification-settings', auth, async (req, res) => {
 router.put('/notification-settings', auth, async (req, res) => {
   try {
     const { notificationSettings } = req.body;
-    
+
     if (!notificationSettings) {
-      return res.status(400).json({ 
-        message: 'Notification settings are required' 
+      return res.status(400).json({
+        message: 'Notification settings are required'
       });
     }
 
@@ -595,9 +596,164 @@ router.put('/notification-settings', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Update notification settings error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to update notification settings',
-      error: error.message 
+      error: error.message
+    });
+  }
+});
+
+// Send language switch OTP
+router.post('/send-language-otp', auth, async (req, res) => {
+  try {
+    const { language } = req.body;
+
+    // Check if user is authenticated
+    if (!req.user) {
+      return res.status(401).json({
+        message: 'User not authenticated'
+      });
+    }
+
+    // Check if language is provided
+    if (!language) {
+      return res.status(400).json({
+        message: 'Language is required'
+      });
+    }
+
+    // Validate language
+    const supportedLanguages = ['en', 'fr', 'es', 'hi', 'pt', 'zh'];
+    if (!supportedLanguages.includes(language)) {
+      return res.status(400).json({
+        message: 'Unsupported language'
+      });
+    }
+
+    // Check if user already has this language set
+    if (req.user.preferredLanguage === language) {
+      return res.status(400).json({
+        message: 'Language is already set'
+      });
+    }
+
+    // Generate OTP
+    const otp = generateSMSOTP();
+
+    // Set OTP expiry (10 minutes)
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Determine verification method based on language
+    let verificationMethod = 'sms'; // Default for non-French languages
+    if (language === 'fr') {
+      verificationMethod = 'email';
+    }
+
+    // Update user with language switch OTP
+    await User.findByIdAndUpdate(req.user._id, {
+      languageSwitchOTP: otp,
+      languageSwitchOTPExpires: otpExpiry
+    });
+
+    let result;
+    if (verificationMethod === 'email') {
+      // Send OTP via email for French
+      result = await sendOTPEmail(req.user.email, otp, `language switch to ${language}`);
+      if (result.success) {
+        console.log(`Language Switch OTP sent to ${req.user.email}: ${otp}`);
+        res.json({
+          message: 'OTP sent successfully to your email'
+        });
+      } else {
+        console.log(`Email failed, Language Switch OTP for ${req.user.email}: ${otp}`);
+        res.json({
+          message: 'OTP generated (check console for demo)',
+          demo_otp: otp
+        });
+      }
+    } else {
+      // Send OTP via SMS for other languages
+      if (!req.user.phone) {
+        return res.status(400).json({
+          message: 'Phone number is required for SMS verification'
+        });
+      }
+      result = await sendOTPSMS(req.user.phone, otp, `language switch to ${language}`);
+      if (result.success) {
+        console.log(`Language Switch OTP sent to ${req.user.phone}: ${otp}`);
+        res.json({
+          message: 'OTP sent successfully to your phone'
+        });
+      } else {
+        console.log(`SMS failed, Language Switch OTP for ${req.user.phone}: ${otp}`);
+        res.json({
+          message: 'OTP generated (check console for demo)',
+          demo_otp: otp
+        });
+      }
+    }
+
+  } catch (error) {
+    console.error('Send language OTP error:', error);
+    res.status(500).json({
+      message: 'Failed to send OTP',
+      error: error.message
+    });
+  }
+});
+
+// Verify language switch OTP
+router.post('/verify-language-otp', auth, async (req, res) => {
+  try {
+    const { language, otp } = req.body;
+
+    // Check if user is authenticated
+    if (!req.user) {
+      return res.status(401).json({
+        message: 'User not authenticated'
+      });
+    }
+
+    // Validate language
+    const supportedLanguages = ['en', 'fr', 'es', 'hi', 'pt', 'zh'];
+    if (!supportedLanguages.includes(language)) {
+      return res.status(400).json({
+        message: 'Unsupported language'
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user.languageSwitchOTP || user.languageSwitchOTP !== otp) {
+      return res.status(400).json({
+        message: 'Invalid OTP'
+      });
+    }
+
+    if (user.languageSwitchOTPExpires < new Date()) {
+      return res.status(400).json({
+        message: 'OTP has expired'
+      });
+    }
+
+    // Clear OTP and update preferred language
+    await User.findByIdAndUpdate(req.user._id, {
+      languageSwitchOTP: undefined,
+      languageSwitchOTPExpires: undefined,
+      preferredLanguage: language,
+      languageSwitchVerified: new Date()
+    });
+
+    res.json({
+      message: 'Language switched successfully',
+      preferredLanguage: language
+    });
+
+  } catch (error) {
+    console.error('Verify language OTP error:', error);
+    res.status(500).json({
+      message: 'Failed to verify OTP',
+      error: error.message
     });
   }
 });

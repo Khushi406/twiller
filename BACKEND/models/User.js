@@ -76,6 +76,21 @@ const userSchema = new mongoose.Schema({
   audioUploadVerified: {
     type: Date
   },
+  // Language switch verification fields
+  languageSwitchOTP: {
+    type: String
+  },
+  languageSwitchOTPExpires: {
+    type: Date
+  },
+  languageSwitchVerified: {
+    type: Date
+  },
+  preferredLanguage: {
+    type: String,
+    default: 'en',
+    enum: ['en', 'fr', 'es', 'hi', 'pt', 'zh']
+  },
   followers: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
