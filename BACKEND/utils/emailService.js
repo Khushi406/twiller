@@ -52,7 +52,57 @@ const sendOTPEmail = async (email, otp, purpose = 'audio upload') => {
   }
 };
 
+// Send Invoice Email
+const sendInvoiceEmail = async (email, invoiceDetails) => {
+  try {
+    const transporter = createTransporter();
+    
+    const { invoiceNumber, planName, amount, subscriptionStartDate, subscriptionEndDate } = invoiceDetails;
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER || 'noreply@twiller.com',
+      to: email,
+      subject: `Your Twiller Subscription Invoice (${invoiceNumber})`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+          <h2 style="color: #1DA1F2; text-align: center;">Twiller Subscription Invoice</h2>
+          <p>Thank you for subscribing! Here are the details of your recent payment:</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;">Invoice Number:</td>
+              <td style="padding: 8px; border: 1px solid #ddd;"><strong>${invoiceNumber}</strong></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;">Plan:</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">${planName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;">Amount Paid:</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">₹${amount}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border: 1px solid #ddd;">Subscription Period:</td>
+              <td style="padding: 8px; border: 1px solid #ddd;">${new Date(subscriptionStartDate).toLocaleDateString()} - ${new Date(subscriptionEndDate).toLocaleDateString()}</td>
+            </tr>
+          </table>
+          <p>Your subscription is now active. Enjoy your new benefits!</p>
+          <hr>
+          <p style="color: #666; font-size: 12px; text-align: center;">This is an automated message from Twiller.</p>
+        </div>
+      `
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Invoice email sent successfully:', result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending invoice email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
-  sendOTPEmail
+  sendOTPEmail,
+  sendInvoiceEmail
 };

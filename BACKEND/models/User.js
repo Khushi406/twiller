@@ -99,6 +99,26 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+  // Subscription details
+  subscription: {
+    plan: {
+      type: String,
+      enum: ['free', 'bronze', 'silver', 'gold'],
+      default: 'free'
+    },
+    tweetLimit: {
+      type: Number,
+      default: 1 // Default for free plan
+    },
+    tweetCount: {
+      type: Number,
+      default: 0
+    },
+    subscriptionEndDate: {
+      type: Date,
+      default: null
+    }
+  },
   // Notification settings
   notificationSettings: {
     enabled: {
@@ -126,6 +146,7 @@ const userSchema = new mongoose.Schema({
       ip: String,
       browser: String,
       os: String,
+      deviceType: String,
       otpRequired: Boolean,
       success: Boolean
     }

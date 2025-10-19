@@ -43,6 +43,28 @@ router.get('/', async (req, res) => {
 router.post('/', auth, async (req, res) => {
   try {
     const { content, image, audio } = req.body;
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if subscription has expired and reset if necessary
+    if (user.subscription.subscriptionEndDate && user.subscription.subscriptionEndDate < new Date()) {
+      user.subscription.plan = 'free';
+      user.subscription.tweetLimit = 1;
+      user.subscription.tweetCount = 0;
+      user.subscription.subscriptionEndDate = null;
+    }
+
+    // Enforce tweet limit based on subscription
+    const { tweetLimit, tweetCount, plan } = user.subscription;
+    if (tweetLimit !== -1 && tweetCount >= tweetLimit) {
+      return res.status(403).json({
+        message: `You have reached your tweet limit for the ${plan} plan. Please upgrade to post more tweets.`,
+        code: 'TWEET_LIMIT_REACHED'
+      });
+    }
 
     const tweet = new Tweet({
       content,
@@ -55,6 +77,10 @@ router.post('/', auth, async (req, res) => {
     });
 
     await tweet.save();
+
+    // Increment user's tweet count for the current cycle
+    user.subscription.tweetCount += 1;
+    await user.save();
     
     // Populate author info
     await tweet.populate('author', 'name username avatar verified');

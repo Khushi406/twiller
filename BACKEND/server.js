@@ -40,6 +40,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/tweets', require('./routes/tweets'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/audio', require('./routes/audio'));
+app.use('/api/subscriptions', require('./routes/subscriptions'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {
