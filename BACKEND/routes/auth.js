@@ -92,8 +92,8 @@ router.post('/login', async (req, res) => {
       // Only allow 10 AM - 1 PM IST (10:00 to 13:00)
       const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
       const hour = nowIST.getHours();
-      // Allow 10 AM to 1 PM IST (10:00 to 13:00)
-      if (hour < 10 || hour >= 13) {
+      // Allow 10 AM to 1 PM IST (10:00 to 13:00) - fix condition to include 1 PM
+      if (hour < 10 || hour > 13) {
         timeAllowed = false;
         // Immediately reject if time is not allowed for mobile
         return res.status(403).json({ message: 'Mobile login allowed only between 10 AM and 1 PM IST' });
