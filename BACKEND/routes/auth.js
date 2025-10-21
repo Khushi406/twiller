@@ -89,13 +89,14 @@ router.post('/login', async (req, res) => {
     let timeAllowed = true;
     // Restrict all mobile devices (deviceType === 'mobile') to 10AM-1PM IST
     if (deviceType === 'mobile' || os === 'Android' || os === 'iOS') {
-      // Only allow 10 AM - 1 PM IST
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const ist = new Date(now.getTime() + istOffset);
-      const hour = ist.getUTCHours(); // This is IST hour because of the offset
-      if (hour < 4 || hour > 7) { // 10-13 IST == 4-7 UTC
+      // Only allow 10 AM - 1 PM IST (10:00 to 13:00)
+      const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      const hour = nowIST.getHours();
+      // Allow 10 AM to 1 PM IST (10:00 to 13:00)
+      if (hour < 10 || hour >= 13) {
         timeAllowed = false;
+        // Immediately reject if time is not allowed for mobile
+        return res.status(403).json({ message: 'Mobile login allowed only between 10 AM and 1 PM IST' });
       }
     }
     // Chrome: require OTP
