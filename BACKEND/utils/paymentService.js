@@ -56,6 +56,7 @@ const isPaymentTimeAllowed = () => {
 // Create Razorpay order
 const createOrder = async (planType, userId) => {
   try {
+    // Check payment time window (10 AM - 11 AM IST)
     if (!isPaymentTimeAllowed()) {
       throw new Error('Payments are only allowed between 10:00 AM and 11:00 AM IST');
     }

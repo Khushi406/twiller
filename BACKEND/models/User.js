@@ -2,13 +2,6 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
-  // OTP for Chrome login
-  loginOTP: {
-    type: String
-  },
-  loginOTPExpires: {
-    type: Date
-  },
   name: {
     type: String,
     required: [true, 'Name is required'],
@@ -86,6 +79,33 @@ const userSchema = new mongoose.Schema({
   languageSwitchVerified: {
     type: Date
   },
+  // Phone verification fields
+  phoneOTP: {
+    type: String
+  },
+  phoneOTPExpires: {
+    type: Date
+  },
+  phoneVerified: {
+    type: Boolean,
+    default: false
+  },
+  // Login OTP verification fields
+  loginOTP: {
+    type: String
+  },
+  loginOTPExpires: {
+    type: Date
+  },
+  loginOTPVerified: {
+    type: Date
+  },
+  // Pending login session (for OTP verification)
+  pendingLoginSession: {
+    token: String,
+    deviceInfo: mongoose.Schema.Types.Mixed,
+    expiresAt: Date
+  },
   preferredLanguage: {
     type: String,
     default: 'en',
@@ -138,19 +158,6 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-  ,
-  // Login tracking
-  loginHistory: [
-    {
-      date: { type: Date, default: Date.now },
-      ip: String,
-      browser: String,
-      os: String,
-      deviceType: String,
-      otpRequired: Boolean,
-      success: Boolean
-    }
-  ]
 }, {
   timestamps: true
 });

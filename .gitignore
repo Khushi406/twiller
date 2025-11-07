@@ -60,6 +60,43 @@ temp/
 dist/
 build/
 
+# Documentation files (generated during development)
+*_DOCUMENTATION.md
+*_SUMMARY.md
+*_TESTING_INSTRUCTIONS.md
+*_TEST_CHECKLIST.md
+*_TESTING_GUIDE.md
+*_QUICKSTART.md
+*_FLOW_DIAGRAM.md
+*_TROUBLESHOOTING.md
+*_COMPLETED.md
+*_PROGRESS.md
+*_PLANS.md
+*_SESSION.md
+IMPLEMENTATION_PLAN.md
+TASK*.md
+QUICK_TEST_*.md
+HOW_TO_ACCESS_*.md
+LOGIN_TRACKING_*.md
+MULTILANGUAGE_*.md
+AUDIO_TESTING_*.md
+OTP_SERVICES_SETUP.md
+TODO.md
+
+# Test and temporary files
+test-*.html
+server_content.txt
+query
+*.bat
+
+# Duplicate icons in root (keep them in public folder)
+apple-icon.svg
+google-icon.svg
+x-logo.svg
+
+# Git submodules or duplicates
+git/
+
 # Package manager lockfiles (optional - you can choose to include them)
 # package-lock.json
 # yarn.lock

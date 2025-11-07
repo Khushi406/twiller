@@ -37,7 +37,27 @@ const sendOTPSMS = async (phoneNumber, otp, purpose = 'language switch') => {
   }
 };
 
+// Send New Password SMS
+const sendNewPasswordSMS = async (phoneNumber, newPassword, username) => {
+  try {
+    const message = await client.messages.create({
+      body: `Twiller - Hi ${username}, your password has been reset. Your new temporary password is: ${newPassword}. Please change it immediately after logging in. Never share this with anyone.`,
+      from: fromPhoneNumber,
+      to: phoneNumber
+    });
+
+    console.log('New password SMS sent successfully:', message.sid);
+    return { success: true, messageId: message.sid };
+  } catch (error) {
+    console.error('Error sending new password SMS:', error);
+    // Fallback - log password to console for demo purposes
+    console.log(`SMS failed, new password for ${phoneNumber}: ${newPassword}`);
+    return { success: false, error: error.message, demo_password: newPassword };
+  }
+};
+
 module.exports = {
   generateOTP,
-  sendOTPSMS
+  sendOTPSMS,
+  sendNewPasswordSMS
 };

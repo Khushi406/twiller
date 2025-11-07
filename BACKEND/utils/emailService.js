@@ -3,7 +3,9 @@ const nodemailer = require('nodemailer');
 // Create transporter for sending emails
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
     auth: {
       user: process.env.EMAIL_USER || 'demo@gmail.com',
       pass: process.env.EMAIL_PASS || 'demo_password'
@@ -12,6 +14,25 @@ const createTransporter = () => {
       rejectUnauthorized: false
     }
   });
+};
+
+// Test email configuration
+const testEmailConnection = async () => {
+  try {
+    const transporter = createTransporter();
+    // Try to send a test email instead of just verifying
+    const result = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_USER,
+      subject: 'Twiller Email Service Test',
+      text: 'This is a test email to verify SMTP configuration.'
+    });
+    console.log('✅ Email service is configured correctly - Test email sent:', result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('❌ Email service configuration error:', error.message);
+    return { success: false, error: error.message };
+  }
 };
 
 // Generate 6-digit OTP
@@ -101,8 +122,57 @@ const sendInvoiceEmail = async (email, invoiceDetails) => {
   }
 };
 
+// Send New Password Email
+const sendNewPasswordEmail = async (email, newPassword, username) => {
+  try {
+    const transporter = createTransporter();
+    
+    const mailOptions = {
+      from: process.env.EMAIL_USER || 'noreply@twiller.com',
+      to: email,
+      subject: 'Twiller - Your New Password',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1DA1F2;">🔐 Password Reset Successful</h2>
+          <p>Hi ${username},</p>
+          <p>Your password has been successfully reset. Here is your new temporary password:</p>
+          <div style="background-color: #f5f8fa; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0;">
+            <h1 style="color: #1da1f2; font-size: 28px; margin: 0; letter-spacing: 4px; font-family: monospace;">${newPassword}</h1>
+          </div>
+          <p><strong>⚠️ Important Security Information:</strong></p>
+          <ul style="color: #657786; line-height: 1.8;">
+            <li>This is a temporary password - please change it immediately after logging in</li>
+            <li>Go to your profile settings to set a new secure password</li>
+            <li>Never share your password with anyone</li>
+            <li>If you didn't request this reset, contact support immediately</li>
+          </ul>
+          <p style="margin-top: 30px;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}" 
+               style="background-color: #1da1f2; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Login to Twiller
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #e1e8ed; margin: 30px 0;">
+          <p style="color: #657786; font-size: 12px;">
+            This is an automated message from Twiller. For security reasons, you can only request password reset once per 24 hours.
+          </p>
+        </div>
+      `
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('New password email sent successfully:', result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending new password email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   generateOTP,
   sendOTPEmail,
-  sendInvoiceEmail
+  sendInvoiceEmail,
+  sendNewPasswordEmail,
+  testEmailConnection
 };
