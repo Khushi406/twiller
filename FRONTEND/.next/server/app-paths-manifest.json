@@ -1,6 +1,6 @@
 {
-  "/notifications/page": "app/notifications/page.js",
+  "/login-history/page": "app/login-history/page.js",
   "/page": "app/page.js",
   "/profile/page": "app/profile/page.js",
-  "/login-history/page": "app/login-history/page.js"
+  "/notifications/page": "app/notifications/page.js"
 }
