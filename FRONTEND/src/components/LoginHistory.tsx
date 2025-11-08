@@ -55,10 +55,12 @@ const LoginHistory: React.FC = () => {
     setLoading(true);
     setError(null);
 
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
     try {
-      console.log('Fetching login history from:', `http://localhost:5000/api/auth/login-history?page=${page}&limit=10`);
+      console.log('Fetching login history from:', `${API_BASE_URL}/auth/login-history?page=${page}&limit=10`);
       const response = await fetch(
-        `http://localhost:5000/api/auth/login-history?page=${page}&limit=10`,
+        `${API_BASE_URL}/auth/login-history?page=${page}&limit=10`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
