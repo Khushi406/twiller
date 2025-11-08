@@ -1,0 +1,1 @@
+﻿{"buildCommand":"cd FRONTEND && npm install && npm run build","outputDirectory":"FRONTEND/.next"}
