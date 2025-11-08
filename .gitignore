@@ -89,11 +89,6 @@ server_content.txt
 query
 *.bat
 
-# Duplicate icons in root (keep them in public folder)
-apple-icon.svg
-google-icon.svg
-x-logo.svg
-
 # Git submodules or duplicates
 git/
 
