@@ -73,8 +73,10 @@ const LoginOTPVerification: React.FC<LoginOTPVerificationProps> = ({
     setError(null);
     setIsLoading(true);
 
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
     try {
-      const response = await fetch('http://localhost:5000/api/auth/verify-login-otp', {
+      const response = await fetch(`${API_BASE_URL}/auth/verify-login-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,8 +112,10 @@ const LoginOTPVerification: React.FC<LoginOTPVerificationProps> = ({
     setIsResending(true);
     setOtp(['', '', '', '', '', '']);
 
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
     try {
-      const response = await fetch('http://localhost:5000/api/auth/resend-login-otp', {
+      const response = await fetch(`${API_BASE_URL}/auth/resend-login-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
