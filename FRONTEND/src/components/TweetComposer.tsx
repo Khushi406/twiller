@@ -7,7 +7,6 @@ import AudioRecorder from './AudioRecorder'
 import AudioOTPVerification from './AudioOTPVerification'
 import AudioPlayer from './AudioPlayer'
 import { apiService } from '@/lib/apiService'
-import TweetLimitIndicator from './TweetLimitIndicator'
 
 interface User {
   id: string
@@ -80,16 +79,8 @@ const TweetComposer = ({ onTweet, user }: TweetComposerProps) => {
     setAudioAttachment(null)
   }
 
-  const handleUpgradeClick = () => {
-    // Navigate to subscription page
-    window.location.href = '/subscribe'
-  }
-
   return (
     <div className="p-4">
-      {/* Tweet Limit Indicator */}
-      <TweetLimitIndicator onUpgradeClick={handleUpgradeClick} />
-      
       <div className="flex space-x-3">
         {/* User Avatar */}
         <div className="flex-shrink-0">

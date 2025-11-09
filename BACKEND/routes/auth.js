@@ -1234,4 +1234,283 @@ router.post('/verify-language-otp', auth, async (req, res) => {
   }
 });
 
+// Add/Update phone number
+router.post('/add-phone', auth, async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+
+    // Validate phone number format (international format)
+    const phoneRegex = /^\+?[\d\s-()]+$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({ message: 'Invalid phone number format. Use international format (e.g., +1234567890)' });
+    }
+
+    // Check if phone number is already used by another user
+    const existingUser = await User.findOne({ phone, _id: { $ne: req.user._id } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Phone number is already registered to another account' });
+    }
+
+    // Generate OTP for phone verification
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update user with phone and OTP
+    await User.findByIdAndUpdate(req.user._id, {
+      phone,
+      phoneOTP: otp,
+      phoneOTPExpires: otpExpiry,
+      phoneVerified: false
+    });
+
+    // Send OTP via SMS
+    try {
+      const smsResult = await sendOTPSMS(phone, otp, 'phone verification');
+      
+      if (smsResult.success) {
+        console.log(`✅ Phone verification OTP sent to ${phone}: ${otp}`);
+        res.json({
+          message: 'OTP sent to your phone number',
+          phone: phone.replace(/(\d{2})(.*)(\d{2})/, '$1***$3'),
+          debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        });
+      } else {
+        console.log(`⚠️ SMS failed, Phone verification OTP for ${phone}: ${otp}`);
+        res.json({
+          message: 'Phone number added. OTP send failed (check console for OTP)',
+          phone: phone.replace(/(\d{2})(.*)(\d{2})/, '$1***$3'),
+          debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        });
+      }
+    } catch (sendError) {
+      console.error('Error sending phone OTP:', sendError);
+      res.json({
+        message: 'Phone number added but failed to send OTP',
+        debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+      });
+    }
+
+  } catch (error) {
+    console.error('Add phone error:', error);
+    res.status(500).json({
+      message: 'Failed to add phone number',
+      error: error.message
+    });
+  }
+});
+
+// Verify phone number
+router.post('/verify-phone', auth, async (req, res) => {
+  try {
+    const { otp } = req.body;
+
+    if (!otp) {
+      return res.status(400).json({ message: 'OTP is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user.phone) {
+      return res.status(400).json({ message: 'No phone number added. Please add a phone number first.' });
+    }
+
+    if (!user.phoneOTP) {
+      return res.status(400).json({ message: 'No OTP found. Please request a new OTP.' });
+    }
+
+    // Check if OTP matches
+    if (user.phoneOTP !== otp.toString().trim()) {
+      console.log('❌ Phone OTP verification failed:', {
+        provided: otp,
+        stored: user.phoneOTP
+      });
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    // Check if OTP expired
+    if (user.phoneOTPExpires < new Date()) {
+      return res.status(400).json({ message: 'OTP has expired. Please request a new OTP.' });
+    }
+
+    // Mark phone as verified
+    await User.findByIdAndUpdate(req.user._id, {
+      phoneOTP: undefined,
+      phoneOTPExpires: undefined,
+      phoneVerified: true
+    });
+
+    res.json({
+      message: 'Phone number verified successfully',
+      phoneVerified: true
+    });
+
+  } catch (error) {
+    console.error('Verify phone error:', error);
+    res.status(500).json({
+      message: 'Failed to verify phone number',
+      error: error.message
+    });
+  }
+});
+
+// Resend phone OTP
+router.post('/resend-phone-otp', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user.phone) {
+      return res.status(400).json({ message: 'No phone number added. Please add a phone number first.' });
+    }
+
+    // Generate new OTP
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update user with new OTP
+    await User.findByIdAndUpdate(req.user._id, {
+      phoneOTP: otp,
+      phoneOTPExpires: otpExpiry
+    });
+
+    // Send OTP via SMS
+    try {
+      const smsResult = await sendOTPSMS(user.phone, otp, 'phone verification');
+      
+      if (smsResult.success) {
+        console.log(`✅ Phone verification OTP resent to ${user.phone}: ${otp}`);
+        res.json({
+          message: 'OTP sent to your phone number',
+          debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        });
+      } else {
+        console.log(`⚠️ SMS failed, Phone verification OTP for ${user.phone}: ${otp}`);
+        res.json({
+          message: 'Failed to send OTP (check console for OTP)',
+          debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+        });
+      }
+    } catch (sendError) {
+      console.error('Error sending phone OTP:', sendError);
+      res.json({
+        message: 'Failed to send OTP',
+        debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+      });
+    }
+
+  } catch (error) {
+    console.error('Resend phone OTP error:', error);
+    res.status(500).json({
+      message: 'Failed to resend OTP',
+      error: error.message
+    });
+  }
+});
+
+// Enhanced language switch with phone OTP option
+router.post('/request-language-otp', auth, async (req, res) => {
+  try {
+    const { language, method } = req.body; // method: 'email' or 'phone'
+
+    if (!language) {
+      return res.status(400).json({ message: 'Language is required' });
+    }
+
+    // Validate language
+    const supportedLanguages = ['en', 'fr', 'es', 'hi', 'pt', 'zh'];
+    if (!supportedLanguages.includes(language)) {
+      return res.status(400).json({ message: 'Unsupported language' });
+    }
+
+    // Validate method
+    if (!method || !['email', 'phone'].includes(method)) {
+      return res.status(400).json({ message: 'Method must be either "email" or "phone"' });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    // Check if user has the required contact method
+    if (method === 'email' && !user.email) {
+      return res.status(400).json({ message: 'No email address found. Please add an email to your account.' });
+    }
+
+    if (method === 'phone' && !user.phone) {
+      return res.status(400).json({ message: 'No phone number found. Please add and verify a phone number first.' });
+    }
+
+    if (method === 'phone' && !user.phoneVerified) {
+      return res.status(400).json({ message: 'Phone number not verified. Please verify your phone number first.' });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save OTP to user
+    await User.findByIdAndUpdate(req.user._id, {
+      languageSwitchOTP: otp,
+      languageSwitchOTPExpires: otpExpiry
+    });
+
+    // Send OTP via email or SMS
+    try {
+      if (method === 'email') {
+        const emailResult = await sendOTPEmail(user.email, otp, `language switch to ${language.toUpperCase()}`);
+        
+        if (emailResult.success) {
+          console.log(`✅ Language switch OTP sent via email to ${user.email}: ${otp}`);
+          res.json({
+            message: 'OTP sent to your email',
+            method: 'email',
+            maskedValue: user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
+            debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+          });
+        } else {
+          console.log(`⚠️ Email failed, Language switch OTP: ${otp}`);
+          res.json({
+            message: 'OTP generated (email send failed, check console)',
+            method: 'email',
+            debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+          });
+        }
+      } else if (method === 'phone') {
+        const smsResult = await sendOTPSMS(user.phone, otp, `language switch to ${language.toUpperCase()}`);
+        
+        if (smsResult.success) {
+          console.log(`✅ Language switch OTP sent via SMS to ${user.phone}: ${otp}`);
+          res.json({
+            message: 'OTP sent to your phone',
+            method: 'phone',
+            maskedValue: user.phone.replace(/(\d{2})(.*)(\d{2})/, '$1***$3'),
+            debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+          });
+        } else {
+          console.log(`⚠️ SMS failed, Language switch OTP: ${otp}`);
+          res.json({
+            message: 'OTP generated (SMS send failed, check console)',
+            method: 'phone',
+            debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+          });
+        }
+      }
+    } catch (sendError) {
+      console.error('Error sending language switch OTP:', sendError);
+      res.json({
+        message: 'OTP generated but failed to send',
+        debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined
+      });
+    }
+
+  } catch (error) {
+    console.error('Request language OTP error:', error);
+    res.status(500).json({
+      message: 'Failed to request OTP',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

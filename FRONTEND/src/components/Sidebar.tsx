@@ -162,7 +162,7 @@ const Sidebar = ({ user, onLogout, currentView = 'home', onViewChange }: Sidebar
             </span>
           </button>
         ))}
-        {/* More button with Dropdown */}
+        {/* More button - Placeholder for future features */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -175,12 +175,9 @@ const Sidebar = ({ user, onLogout, currentView = 'home', onViewChange }: Sidebar
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56 bg-black border-gray-600/20 text-white shadow-lg">
-            <DropdownMenuItem
-              onClick={() => router.push('/settings')}
-              className="cursor-pointer hover:bg-gray-700 focus:bg-gray-700"
-            >
-              Settings
-            </DropdownMenuItem>
+            <div className="px-4 py-3 text-sm text-gray-400 text-center">
+              More options coming soon...
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </nav>
