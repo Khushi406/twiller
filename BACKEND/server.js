@@ -9,8 +9,7 @@ const PORT = process.env.PORT || 5000;
 // CORS configuration
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://twiller-3a123b6wu-khushis-projects-7824f37c.vercel.app',
-  'https://twiller-x-topaz.vercel.app',
+  'https://twillerxx.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
